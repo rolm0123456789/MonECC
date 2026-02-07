@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MonECC.Application/MonECC.Application.csproj" />
+    <Project Path="src/MonECC.CLI/MonECC.CLI.csproj" />
+    <Project Path="src/MonECC.Domain/MonECC.Domain.csproj" />
+    <Project Path="src/MonECC.Infrastructure/MonECC.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MonECC.Tests/MonECC.Tests.csproj" />
+  </Folder>
+</Solution>

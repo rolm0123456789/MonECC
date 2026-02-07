@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "monECC": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
