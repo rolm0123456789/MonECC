@@ -1,5 +1,4 @@
 ﻿using MonECC.Domain.Math;
-using MonECC.Infrastructure.IO;
 
 namespace MonECC.Domain.Model;
 

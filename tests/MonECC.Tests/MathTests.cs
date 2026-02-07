@@ -1,6 +1,5 @@
 ﻿using MonECC.Domain.Math;
 using MonECC.Domain.Model;
-using MonECC.Infrastructure.IO;
 
 namespace MonECC.Tests;
 

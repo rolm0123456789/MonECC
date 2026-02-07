@@ -1,4 +1,4 @@
-﻿namespace MonECC.Infrastructure.IO;
+﻿namespace MonECC.Domain.Model;
 
 public readonly record struct Point(long X, long Y)
 {

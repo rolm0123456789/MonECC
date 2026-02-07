@@ -1,6 +1,5 @@
 ﻿using MonECC.Domain.Interfaces;
 using MonECC.Domain.Model;
-using MonECC.Infrastructure.IO;
 using System.Text;
 
 namespace MonECC.Application.Commands;

@@ -1,6 +1,5 @@
 ﻿using MonECC.Domain.Interfaces;
 using MonECC.Domain.Model;
-using MonECC.Infrastructure.IO;
 using System.Text;
 
 namespace MonECC.Application.Commands;
@@ -21,22 +20,22 @@ public class EncryptCommand(IFileSystem fileSystem, ICryptoProvider crypto)
         long myK = await LoadPrivateKey(privateKeyFile);
         Point targetQ = await LoadPublicKey(targetPublicKeyFile);
 
-        // 2. Calcul du secret partagé S = k * Q_cible [cite: 31]
+        // 2. Calcul du secret partagé S = k * Q_cible
         Point sharedSecretPoint = _curve.Multiply(targetQ, myK);
 
         if (sharedSecretPoint.IsInfinity)
             throw new Exception("Erreur critique : Le secret partagé est le point à l'infini (clé invalide ?).");
 
-        // 3. Dérivation de la clé AES et IV via SHA256 [cite: 32]
+        // 3. Dérivation de la clé AES et IV via SHA256
         // Le TP Python suggère de hasher la coordonnée X : sha256(S.x)
         byte[] secretBytes = Encoding.UTF8.GetBytes(sharedSecretPoint.X.ToString());
         byte[] hash = crypto.ComputeSha256(secretBytes);
 
-        // [cite: 45-46] : IV = 16 premiers chars (bytes), Key = 16 derniers
+        // IV = 16 premiers chars (bytes), Key = 16 derniers
         byte[] iv = hash[..16];
         byte[] key = hash[16..];
 
-        // 4. Chiffrement AES [cite: 38]
+        // 4. Chiffrement AES
         byte[] plainBytes = Encoding.UTF8.GetBytes(plainText);
         byte[] cipherBytes = crypto.AesEncrypt(plainBytes, key, iv);
 
@@ -52,8 +51,7 @@ public class EncryptCommand(IFileSystem fileSystem, ICryptoProvider crypto)
     private async Task<long> LoadPrivateKey(string path)
     {
         string content = await fileSystem.ReadAllTextAsync(path);
-        string[] lines = content.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
-        // Validation basique du format [cite: 81]
+        var lines = content.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
         if (!lines[0].Contains("begin monECC private")) throw new FormatException("Header clé privée invalide");
 
         string b64 = lines[1].Trim();
@@ -64,12 +62,11 @@ public class EncryptCommand(IFileSystem fileSystem, ICryptoProvider crypto)
     private async Task<Point> LoadPublicKey(string path)
     {
         string content = await fileSystem.ReadAllTextAsync(path);
-        string[] lines = content.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
-        // Validation basique [cite: 92]
+        var lines = content.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
         if (!lines[0].Contains("begin monECC public")) throw new FormatException("Header clé publique invalide");
 
-        string b64 = lines[1].Trim(); // [cite: 95]
-        string coords = Encoding.UTF8.GetString(Convert.FromBase64String(b64)); // "x;y"
+        string b64 = lines[1].Trim();
+        string coords = Encoding.UTF8.GetString(Convert.FromBase64String(b64));
 
         var parts = coords.Split(';');
         return new Point(long.Parse(parts[0]), long.Parse(parts[1]));

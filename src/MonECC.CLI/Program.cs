@@ -109,9 +109,26 @@ static async Task HandleOutputAsync(FileSystemAdapter fs, string content, string
 
 static void ShowHelp()
 {
-    Console.WriteLine("--- MonECC - Outil de chiffrement ECC/AES ---");
-    Console.WriteLine("Usage:");
-    Console.WriteLine("  monECC keygen [-f filename] [-s size]");
-    Console.WriteLine("  monECC crypt <pubKey> [<msg>] [-i input] [-o output]");
-    Console.WriteLine("  monECC decrypt <privKey> [<cipher>] [-i input] [-o output]");
+    Console.WriteLine("MonECC - Outil de chiffrement ECC/AES");
+    Console.WriteLine();
+    Console.WriteLine("Syntaxe :");
+    Console.WriteLine("  monECC <commande> [<clé>] [<texte>] [switchs]");
+    Console.WriteLine();
+    Console.WriteLine("Commande :");
+    Console.WriteLine("  keygen  : Génère une paire de clé");
+    Console.WriteLine("  crypt   : Chiffre <texte> pour la clé publique <clé>");
+    Console.WriteLine("  decrypt : Déchiffre <texte> pour la clé privée <clé>");
+    Console.WriteLine("  help    : Affiche ce manuel");
+    Console.WriteLine();
+    Console.WriteLine("Clé :");
+    Console.WriteLine("  Un fichier contenant une clé publique (crypt) ou privée (decrypt)");
+    Console.WriteLine();
+    Console.WriteLine("Texte :");
+    Console.WriteLine("  Une phrase en clair (crypt) ou chiffrée en Base64 (decrypt)");
+    Console.WriteLine();
+    Console.WriteLine("Switchs :");
+    Console.WriteLine("  -f <file>  Nom des clés générées (défaut: monECC.pub / monECC.priv)");
+    Console.WriteLine("  -s <size>  Plage d'aléa de la clé (défaut: 1000)");
+    Console.WriteLine("  -i <file>  Fichier d'entrée (texte en clair ou chiffré)");
+    Console.WriteLine("  -o <file>  Fichier de sortie (au lieu d'afficher)");
 }

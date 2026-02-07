@@ -1,3 +1,4 @@
+VERGUET Romain
 # MonECC - Implémentation de Cryptographie sur Courbes Elliptiques
 
 **MonECC** est une application console développée en .NET 10 (Native AOT) implémentant un cryptosystème hybride alliant la Cryptographie sur Courbes Elliptiques (ECC) pour l'échange de clés et AES-128 pour le chiffrement symétrique.

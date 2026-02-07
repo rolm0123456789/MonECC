@@ -1,6 +1,5 @@
 ﻿using MonECC.Domain.Interfaces;
 using MonECC.Domain.Model;
-using MonECC.Infrastructure.IO;
 using System.Text;
 
 namespace MonECC.Application.Commands;
@@ -45,10 +44,9 @@ public class DecryptCommand(IFileSystem fileSystem, ICryptoProvider crypto)
     // (Duplication de code possible ici pour LoadKey -> Dans un vrai projet, on ferait un KeyLoaderService injecté)
     private async Task<long> LoadPrivateKey(string path)
     {
-        /* Même implémentation que EncryptCommand - 
-           Pour le "Perfect Project", on devrait extraire ça dans un service commun "KeyRepository" */
         string content = await fileSystem.ReadAllTextAsync(path);
         var lines = content.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        if (!lines[0].Contains("begin monECC private")) throw new FormatException("Header clé privée invalide");
         string b64 = lines[1].Trim();
         return long.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(b64)));
     }

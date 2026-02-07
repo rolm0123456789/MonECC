@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace MonECC.CLI;
+﻿namespace MonECC.CLI;
 
 /// <summary>
 /// Contient toutes les options possibles passées en ligne de commande.

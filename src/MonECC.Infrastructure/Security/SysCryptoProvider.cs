@@ -45,10 +45,10 @@ public class SysCryptoProvider : ICryptoProvider
     // Configuration centralisée pour éviter les erreurs de copier-coller entre Encrypt/Decrypt
     private void ConfigureAes(Aes aes, byte[] key, byte[] iv)
     {
-        aes.KeySize = 128; // Le TP implique 128 bits (16 bytes de clé extraits du SHA256) [cite: 46]
+        aes.KeySize = 128; // Le TP implique 128 bits (16 bytes de clé extraits du SHA256)
         aes.BlockSize = 128; // AES est toujours 128 bits
-        aes.Mode = CipherMode.CBC; // Exigence TP [cite: 50]
-        aes.Padding = PaddingMode.PKCS7; // Exigence TP [cite: 47]
+        aes.Mode = CipherMode.CBC; // Exigence TP
+        aes.Padding = PaddingMode.PKCS7; // Exigence TP
 
         aes.Key = key;
         aes.IV = iv;
