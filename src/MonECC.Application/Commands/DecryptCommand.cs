@@ -9,26 +9,26 @@ public class DecryptCommand(IFileSystem fileSystem, ICryptoProvider crypto)
     private readonly Curve _curve = new(35, 3, 101);
 
     /// <summary>
-    /// Déchiffre un message.
-    /// Note : Nécessite la clé publique de l'émetteur pour reconstruire le secret partagé.
+    /// Déchiffre un message avec la clé privée et la clé publique de l'émetteur.
     /// </summary>
     public async Task<string> ExecuteAsync(string privateKeyFile, string senderPublicKeyFile, string cipherTextBase64)
     {
-        // 1. Chargement des clés
+        // 1. Chargement des clés depuis les fichiers
         long myK = await LoadPrivateKey(privateKeyFile);
         Point senderQ = await LoadPublicKey(senderPublicKeyFile);
 
-        // 2. Calcul du secret partagé S = myK * SenderQ (Commutatif : k_a * Q_b == k_b * Q_a)
+        // 2. Reconstruction du secret partagé (commutatif : k_a * Q_b == k_b * Q_a)
         Point sharedSecretPoint = _curve.Multiply(senderQ, myK);
 
-        // 3. Dérivation Hash (Identique à l'encryption)
+        // 3. Dérivation identique au chiffrement : SHA256(S.x)
         byte[] secretBytes = Encoding.UTF8.GetBytes(sharedSecretPoint.X.ToString());
         byte[] hash = crypto.ComputeSha256(secretBytes);
 
+        // IV = 16 premiers octets, Clé AES = 16 derniers octets
         byte[] iv = hash[..16];
         byte[] key = hash[16..];
 
-        // 4. Déchiffrement AES
+        // 4. Déchiffrement AES-128/CBC/PKCS7
         byte[] cipherBytes = Convert.FromBase64String(cipherTextBase64);
         try
         {
@@ -41,7 +41,9 @@ public class DecryptCommand(IFileSystem fileSystem, ICryptoProvider crypto)
         }
     }
 
-    // (Duplication de code possible ici pour LoadKey -> Dans un vrai projet, on ferait un KeyLoaderService injecté)
+    /// <summary>
+    /// Lit et décode la clé privée (base64 -> k) depuis un fichier .priv
+    /// </summary>
     private async Task<long> LoadPrivateKey(string path)
     {
         string content = await fileSystem.ReadAllTextAsync(path);
@@ -51,11 +53,14 @@ public class DecryptCommand(IFileSystem fileSystem, ICryptoProvider crypto)
         return long.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(b64)));
     }
 
+    /// <summary>
+    /// Lit et décode la clé publique (base64 -> "Qx;Qy") depuis un fichier .pub
+    /// </summary>
     private async Task<Point> LoadPublicKey(string path)
     {
-        /* Même implémentation que EncryptCommand */
         string content = await fileSystem.ReadAllTextAsync(path);
         var lines = content.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        if (!lines[0].Contains("begin monECC public")) throw new FormatException("Header clé publique invalide");
         string b64 = lines[1].Trim();
         var parts = Encoding.UTF8.GetString(Convert.FromBase64String(b64)).Split(';');
         return new Point(long.Parse(parts[0]), long.Parse(parts[1]));

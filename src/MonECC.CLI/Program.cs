@@ -1,9 +1,9 @@
 ﻿using MonECC.Application.Commands;
-using MonECC.CLI; // Nécessaire pour ArgParser
+using MonECC.CLI;
 using MonECC.Infrastructure.IO;
 using MonECC.Infrastructure.Security;
 
-// --- Composition Root ---
+// --- Composition Root : injection manuelle des dépendances ---
 var fileSystem = new FileSystemAdapter();
 var cryptoProvider = new SysCryptoProvider();
 
@@ -11,8 +11,7 @@ var keyGenCmd = new KeyGenCommand(fileSystem);
 var encryptCmd = new EncryptCommand(fileSystem, cryptoProvider);
 var decryptCmd = new DecryptCommand(fileSystem, cryptoProvider);
 
-// --- Parsing ---
-// On délègue toute la complexité au parser
+// --- Parsing des arguments CLI ---
 var options = ArgParser.Parse(args);
 
 if (options.ShowHelp || string.IsNullOrEmpty(options.Command))
@@ -26,23 +25,17 @@ try
     switch (options.Command)
     {
         case "keygen":
-            // Utilise directement les valeurs typées
             await keyGenCmd.ExecuteAsync(options.KeyName, options.KeySize);
             break;
 
         case "crypt":
-            // Validation
             if (options.PositionalArgs.Count < 1) throw new ArgumentException("Clé publique manquante.");
 
             string pubKeyFile = options.PositionalArgs[0];
-
-            // Logique Input (-i ou Argument texte)
             string plainText = await GetContentAsync(fileSystem, options.InputFile, options.PositionalArgs, 1);
-            string myPrivKeyFile = "monECC.priv"; // Défaut TP
 
-            string cipherText = await encryptCmd.ExecuteAsync(myPrivKeyFile, pubKeyFile, plainText);
+            string cipherText = await encryptCmd.ExecuteAsync("monECC.priv", pubKeyFile, plainText);
 
-            // Logique Output (-o)
             await HandleOutputAsync(fileSystem, cipherText, options.OutputFile, "Message chiffré (Base64)");
             break;
 
@@ -50,16 +43,10 @@ try
             if (options.PositionalArgs.Count < 1) throw new ArgumentException("Clé privée manquante.");
 
             string privKeyFile = options.PositionalArgs[0];
-
-            // Logique Input (-i ou Argument texte)
             string cipherInput = await GetContentAsync(fileSystem, options.InputFile, options.PositionalArgs, 1);
-            string senderPubKeyFile = "monECC.pub"; // Défaut TP
 
-            cipherInput = cipherInput.Trim(); // Nettoyage
+            string decryptedText = await decryptCmd.ExecuteAsync(privKeyFile, "monECC.pub", cipherInput.Trim());
 
-            string decryptedText = await decryptCmd.ExecuteAsync(privKeyFile, senderPubKeyFile, cipherInput);
-
-            // Logique Output (-o)
             await HandleOutputAsync(fileSystem, decryptedText, options.OutputFile, "Message déchiffré");
             break;
 
@@ -76,8 +63,9 @@ catch (Exception ex)
     Console.ResetColor();
 }
 
-// --- Helpers Simplifiés ---
-
+/// <summary>
+/// Récupère le contenu à traiter : soit depuis un fichier (-i), soit depuis un argument positionnel.
+/// </summary>
 static async Task<string> GetContentAsync(FileSystemAdapter fs, string? inputFile, List<string> positionalArgs, int argIndex)
 {
     if (!string.IsNullOrEmpty(inputFile))
@@ -94,6 +82,9 @@ static async Task<string> GetContentAsync(FileSystemAdapter fs, string? inputFil
     throw new ArgumentException("Aucun contenu fourni. Utilisez un argument texte ou -i <fichier>.");
 }
 
+/// <summary>
+/// Écrit le résultat dans un fichier (-o) ou l'affiche sur la console.
+/// </summary>
 static async Task HandleOutputAsync(FileSystemAdapter fs, string content, string? outputFile, string label)
 {
     if (!string.IsNullOrEmpty(outputFile))

@@ -35,21 +35,14 @@ public class MathTests
     [Fact]
     public void Point_Addition_ShouldWork()
     {
-        // P(2, 9) est sur la courbe
         var P = new Point(2, 9);
-
-        // Calcul manuel ou vérifié : 2P (Doublement)
-        // s = (3*2^2 + 35) / (2*9) = (12+35)/18 = 47 * inv(18) ...
         var P2 = _curve.Add(P, P);
 
-        // Vérification basique : Le point résultant DOIT être sur la courbe
         Assert.True(_curve.Contains(P2), $"Le point 2P ({P2}) n'est pas sur la courbe !");
 
-        // Vérification de la symétrie : P + (-P) = Infini
-        // -P a pour coordonnée (x, -y) => (2, -9 mod 101) => (2, 92)
+        // P + (-P) = Infini  (-P = (2, -9 mod 101) = (2, 92))
         var negP = new Point(2, 92);
-        var result = _curve.Add(P, negP);
-        Assert.True(result.IsInfinity, "P + (-P) devrait être l'infini");
+        Assert.True(_curve.Add(P, negP).IsInfinity, "P + (-P) devrait être l'infini");
     }
 
     [Fact]
