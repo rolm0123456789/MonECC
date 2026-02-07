@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\MonECC.Domain\MonECC.Domain.csproj" />
     <ProjectReference Include="..\..\src\MonECC.Application\MonECC.Application.csproj" />
+    <ProjectReference Include="..\..\src\MonECC.Infrastructure\MonECC.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

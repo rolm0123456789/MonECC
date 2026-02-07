@@ -1,8 +1,9 @@
-﻿using MonECC.Infrastructure.IO;
-using MonECC.Application.Commands;
+﻿using MonECC.Application.Commands;
+using MonECC.CLI; // Nécessaire pour ArgParser
+using MonECC.Infrastructure.IO;
 using MonECC.Infrastructure.Security;
 
-// --- Composition Root (Injection de dépendances) ---
+// --- Composition Root ---
 var fileSystem = new FileSystemAdapter();
 var cryptoProvider = new SysCryptoProvider();
 
@@ -10,59 +11,60 @@ var keyGenCmd = new KeyGenCommand(fileSystem);
 var encryptCmd = new EncryptCommand(fileSystem, cryptoProvider);
 var decryptCmd = new DecryptCommand(fileSystem, cryptoProvider);
 
-// --- Parsing Arguments ---
-if (args.Length == 0 || args.Contains("help") || args.Contains("-h"))
+// --- Parsing ---
+// On délègue toute la complexité au parser
+var options = ArgParser.Parse(args);
+
+if (options.ShowHelp || string.IsNullOrEmpty(options.Command))
 {
     ShowHelp();
     return;
 }
 
-string command = args[0].ToLower();
-
 try
 {
-    switch (command)
+    switch (options.Command)
     {
         case "keygen":
-            // Gestion du switch optionnel -f
-            string outputName = GetSwitchValue(args, "-f") ?? "monECC";
-            await keyGenCmd.ExecuteAsync(outputName);
+            // Utilise directement les valeurs typées
+            await keyGenCmd.ExecuteAsync(options.KeyName, options.KeySize);
             break;
 
         case "crypt":
-            // monECC crypt <clé_publique> <texte> [-o output]
-            if (args.Length < 3) throw new ArgumentException("Arguments manquants. Usage: monECC crypt <public_key_file> <texte>");
+            // Validation
+            if (options.PositionalArgs.Count < 1) throw new ArgumentException("Clé publique manquante.");
 
-            string pubKeyFile = args[1];
-            string plainText = args[2];
-            // Le TP ne précise pas où est la clé privée de l'expéditeur pour crypter...
-            // Pour le TP on va supposer qu'on génère une clé éphémère ou qu'on utilise "monECC.priv" par défaut 
-            // car ECC nécessite MA clé privée + SA clé publique pour dériver le secret.
-            // Hypothèse "Major" : On cherche une clé privée locale par défaut.
-            string myPrivKeyFile = "monECC.priv";
+            string pubKeyFile = options.PositionalArgs[0];
+
+            // Logique Input (-i ou Argument texte)
+            string plainText = await GetContentAsync(fileSystem, options.InputFile, options.PositionalArgs, 1);
+            string myPrivKeyFile = "monECC.priv"; // Défaut TP
 
             string cipherText = await encryptCmd.ExecuteAsync(myPrivKeyFile, pubKeyFile, plainText);
 
-            Console.WriteLine($"Message chiffré (Base64) :\n{cipherText}");
+            // Logique Output (-o)
+            await HandleOutputAsync(fileSystem, cipherText, options.OutputFile, "Message chiffré (Base64)");
             break;
 
         case "decrypt":
-            // monECC decrypt <clé_privée> <texte_chiffré>
-            // Note: Comme vu précédemment, il manque la clé publique de l'émetteur dans les specs du TP.
-            // On va supposer qu'on la passe ou qu'elle est "monECC.pub" par défaut pour tester.
-            if (args.Length < 3) throw new ArgumentException("Arguments manquants. Usage: monECC decrypt <private_key_file> <texte_chiffré>");
+            if (options.PositionalArgs.Count < 1) throw new ArgumentException("Clé privée manquante.");
 
-            string privKeyFile = args[1];
-            string cipherB64 = args[2];
-            string senderPubKeyFile = "monECC.pub"; // Valeur par défaut pour le TP
+            string privKeyFile = options.PositionalArgs[0];
 
-            string decryptedText = await decryptCmd.ExecuteAsync(privKeyFile, senderPubKeyFile, cipherB64);
+            // Logique Input (-i ou Argument texte)
+            string cipherInput = await GetContentAsync(fileSystem, options.InputFile, options.PositionalArgs, 1);
+            string senderPubKeyFile = "monECC.pub"; // Défaut TP
 
-            Console.WriteLine($"Message déchiffré :\n{decryptedText}");
+            cipherInput = cipherInput.Trim(); // Nettoyage
+
+            string decryptedText = await decryptCmd.ExecuteAsync(privKeyFile, senderPubKeyFile, cipherInput);
+
+            // Logique Output (-o)
+            await HandleOutputAsync(fileSystem, decryptedText, options.OutputFile, "Message déchiffré");
             break;
 
         default:
-            Console.WriteLine($"Commande inconnue : {command}");
+            Console.WriteLine($"Commande inconnue : {options.Command}");
             ShowHelp();
             break;
     }
@@ -72,30 +74,44 @@ catch (Exception ex)
     Console.ForegroundColor = ConsoleColor.Red;
     Console.WriteLine($"ERREUR : {ex.Message}");
     Console.ResetColor();
-    // En mode debug on peut afficher la stacktrace, mais en prod on évite.
-    // Console.WriteLine(ex.StackTrace); 
 }
 
-// --- Helpers CLI ---
+// --- Helpers Simplifiés ---
 
-static string? GetSwitchValue(string[] args, string switchName)
+static async Task<string> GetContentAsync(FileSystemAdapter fs, string? inputFile, List<string> positionalArgs, int argIndex)
 {
-    int index = Array.IndexOf(args, switchName);
-    if (index != -1 && index + 1 < args.Length)
+    if (!string.IsNullOrEmpty(inputFile))
     {
-        return args[index + 1];
+        Console.WriteLine($"Lecture fichier : {inputFile}");
+        return await fs.ReadAllTextAsync(inputFile);
     }
-    return null;
+
+    if (argIndex < positionalArgs.Count)
+    {
+        return positionalArgs[argIndex];
+    }
+
+    throw new ArgumentException("Aucun contenu fourni. Utilisez un argument texte ou -i <fichier>.");
+}
+
+static async Task HandleOutputAsync(FileSystemAdapter fs, string content, string? outputFile, string label)
+{
+    if (!string.IsNullOrEmpty(outputFile))
+    {
+        await fs.WriteAllTextAsync(outputFile, content);
+        Console.WriteLine($"Résultat sauvegardé dans : {outputFile}");
+    }
+    else
+    {
+        Console.WriteLine($"{label} :\n{content}");
+    }
 }
 
 static void ShowHelp()
 {
     Console.WriteLine("--- MonECC - Outil de chiffrement ECC/AES ---");
     Console.WriteLine("Usage:");
-    Console.WriteLine("  monECC keygen [-f filename]           : Génère une paire de clés.");
-    Console.WriteLine("  monECC crypt <pubKey> <msg>           : Chiffre un message.");
-    Console.WriteLine("  monECC decrypt <privKey> <cipher>     : Déchiffre un message.");
-    Console.WriteLine();
-    Console.WriteLine("Options:");
-    Console.WriteLine("  -f <file> : Préfixe des fichiers clés (défaut: monECC)");
+    Console.WriteLine("  monECC keygen [-f filename] [-s size]");
+    Console.WriteLine("  monECC crypt <pubKey> [<msg>] [-i input] [-o output]");
+    Console.WriteLine("  monECC decrypt <privKey> [<cipher>] [-i input] [-o output]");
 }
