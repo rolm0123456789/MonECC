@@ -71,69 +71,91 @@ docker build -t monecc .
 
 Nous utilisons un volume (`-v`) pour permettre au conteneur de lire et écrire des fichiers sur votre machine hôte. Les fichiers seront générés dans le dossier courant (`/data` dans le conteneur).
 
+> **Note :** Sous Linux/Mac, remplacez `${PWD}` par `$(pwd)`.
+
 #### A. Génération de clés (`keygen`)
 
-Génère une paire de clés privée et publique. Le programme boucle automatiquement jusqu'à trouver une paire mathématiquement valide sur la courbe $F_{101}$.
+Génère une paire de clés privée et publique.
 
 **Syntaxe :** `keygen [-f filename] [-s size]`
 
-* `-f <filename>` : Préfixe des fichiers (défaut : "monECC").
+* `-f <filename>` : Préfixe des fichiers (défaut : `monECC`).
 * `-s <size>` : Taille maximale de l'aléa pour la clé privée (défaut : 1000).
 
-**Exemple :**
-
 ```bash
-# Génère 'maCle.priv' et 'maCle.pub' avec un aléa jusqu'à 5000
-docker run --rm -v ${PWD}:/data monecc keygen -f maCle -s 5000
+# Génère 'monECC.priv' et 'monECC.pub' (par défaut)
+docker run --rm -v ${PWD}:/data monecc keygen
 
+# Génère 'bob.priv' et 'bob.pub' avec un aléa jusqu'à 500
+docker run --rm -v ${PWD}:/data monecc keygen -f bob -s 500
 ```
 
 #### B. Chiffrement (`crypt`)
 
-Chiffre un message en utilisant la clé publique du destinataire.
+Chiffre un message en utilisant votre clé privée (`monECC.priv`) et la clé publique du destinataire.
 
-**Syntaxe :** `crypt <pubKeyFile> [<message>] [-i input] [-o output]`
+**Syntaxe :** `crypt <pubKeyFile> <message> [-i input] [-o output]`
 
 * `<pubKeyFile>` : Fichier de la clé publique du destinataire.
-* `<message>` : Message texte (si l'option -i n'est pas utilisée).
+* `<message>` : Message texte en clair (si l'option `-i` n'est pas utilisée).
 * `-i <file>` : Lit le message depuis un fichier texte.
 * `-o <file>` : Écrit le résultat chiffré dans un fichier au lieu de la console.
 
-**Exemple (Console) :**
+> Le fichier `monECC.priv` doit exister dans le dossier courant (généré par `keygen`).
 
 ```bash
-docker run --rm -v ${PWD}:/data monecc crypt maCle.pub "Message Secret"
+# Chiffre un message pour soi-même (utilise monECC.priv + monECC.pub)
+docker run --rm -v ${PWD}:/data monecc crypt monECC.pub "Message Secret"
 
-```
+# Chiffre un message pour Bob (utilise monECC.priv + bob.pub)
+docker run --rm -v ${PWD}:/data monecc crypt bob.pub "Hello Bob!"
 
-**Exemple (Fichier vers Fichier) :**
+# Chiffre un message pour Bob et sauvegarde dans un fichier
+docker run --rm -v ${PWD}:/data monecc crypt bob.pub "Hello Bob!" -o secret.enc
 
-```bash
 # Chiffre le contenu de 'clair.txt' vers 'secret.enc'
-docker run --rm -v ${PWD}:/data monecc crypt maCle.pub -i clair.txt -o secret.enc
-
+docker run --rm -v ${PWD}:/data monecc crypt monECC.pub -i clair.txt -o secret.enc
 ```
 
 #### C. Déchiffrement (`decrypt`)
 
-Déchiffre un message en utilisant votre clé privée.
+Déchiffre un message en utilisant votre clé privée et la clé publique de l'émetteur (`monECC.pub`).
 
-**Syntaxe :** `decrypt <privKeyFile> [<cipher>] [-i input] [-o output]`
+**Syntaxe :** `decrypt <privKeyFile> <cipher> [-i input] [-o output]`
 
 * `<privKeyFile>` : Fichier de votre clé privée.
-* `<cipher>` : Message chiffré en Base64 (si l'option -i n'est pas utilisée).
+* `<cipher>` : Message chiffré en Base64 (si l'option `-i` n'est pas utilisée).
 * `-i <file>` : Lit le message chiffré depuis un fichier.
 * `-o <file>` : Écrit le message déchiffré dans un fichier.
 
-**Exemple :**
+> Le fichier `monECC.pub` doit exister dans le dossier courant (clé publique de l'émetteur).
 
 ```bash
-# Déchiffre le fichier 'secret.enc' et affiche le résultat
-docker run --rm -v ${PWD}:/data monecc decrypt maCle.priv -i secret.enc
+# Déchiffre un message (utilise monECC.priv + monECC.pub)
+docker run --rm -v ${PWD}:/data monecc decrypt monECC.priv "D2w3z35cKWYFFlzYTHzC+A=="
 
+# Déchiffre depuis un fichier et affiche le résultat
+docker run --rm -v ${PWD}:/data monecc decrypt monECC.priv -i secret.enc
+
+# Déchiffre depuis un fichier et sauvegarde dans un autre fichier
+docker run --rm -v ${PWD}:/data monecc decrypt monECC.priv -i secret.enc -o resultat.txt
 ```
 
-*Note : Sous Linux/Mac, remplacez `${PWD}` par `$(pwd)`.*
+#### D. Scénario complet : Communication Alice → Bob
+
+```bash
+# 1. Alice génère ses clés (monECC.priv + monECC.pub)
+docker run --rm -v ${PWD}:/data monecc keygen
+
+# 2. Bob génère ses clés (bob.priv + bob.pub)
+docker run --rm -v ${PWD}:/data monecc keygen -f bob
+
+# 3. Alice chiffre un message pour Bob (utilise monECC.priv + bob.pub)
+docker run --rm -v ${PWD}:/data monecc crypt bob.pub "Hello Bob!" -o secret.enc
+
+# 4. Bob déchiffre le message (utilise bob.priv + monECC.pub = clé publique d'Alice)
+docker run --rm -v ${PWD}:/data monecc decrypt bob.priv -i secret.enc
+```
 
 ## Tests Unitaires
 
@@ -147,7 +169,6 @@ Pour lancer les tests (nécessite le SDK .NET localement) :
 
 ```bash
 dotnet test
-
 ```
 
 ## Structure du Projet
