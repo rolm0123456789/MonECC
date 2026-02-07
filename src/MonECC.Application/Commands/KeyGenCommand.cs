@@ -8,8 +8,9 @@ public class KeyGenCommand(IFileSystem fileSystem)
 {
     // Courbe du TP : y² = x³ + 35x + 3 (mod 101)
     private readonly Curve _curve = new(35, 3, 101);
-    // Point générateur G(2, 9) sur la courbe
-    private readonly Point _G = new(2, 9);
+    // Point générateur G(6, 5) sur la courbe (cycle de 28, recommandé par le prof)
+    // Note : P(2,9) n'a qu'un cycle de 4, P'(6,5) offre 28 possibilités
+    private readonly Point _G = new(6, 5);
 
     /// <summary>
     /// Génère une paire de clés (privée k, publique Q = k*G) et les sauvegarde.

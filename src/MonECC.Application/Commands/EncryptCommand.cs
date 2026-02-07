@@ -23,13 +23,18 @@ public class EncryptCommand(IFileSystem fileSystem, ICryptoProvider crypto)
         if (sharedSecretPoint.IsInfinity)
             throw new Exception("Le secret partagé est le point à l'infini (clé invalide).");
 
-        // 3. Dérivation de la clé AES : SHA256 sur la coordonnée X du secret
-        byte[] secretBytes = Encoding.UTF8.GetBytes(sharedSecretPoint.X.ToString());
+        // 3. Dérivation de la clé AES : SHA256 sur les deux coordonnées du secret ("X;Y")
+        //    Conformément au TP : on hashe le secret partagé S puis on utilise le hexdigest.
+        string secretString = $"{sharedSecretPoint.X};{sharedSecretPoint.Y}";
+        byte[] secretBytes = Encoding.UTF8.GetBytes(secretString);
         byte[] hash = crypto.ComputeSha256(secretBytes);
 
-        // IV = 16 premiers octets du hash, Clé AES = 16 derniers octets
-        byte[] iv = hash[..16];
-        byte[] key = hash[16..];
+        // Conversion en hexdigest
+        string hexDigest = Convert.ToHexStringLower(hash); // 64 caractères hex
+
+        // IV = 16 premiers caractères du hexdigest, Clé AES = 16 derniers caractères
+        byte[] iv = Encoding.ASCII.GetBytes(hexDigest[..16]);
+        byte[] key = Encoding.ASCII.GetBytes(hexDigest[^16..]);
 
         // 4. Chiffrement AES-128/CBC/PKCS7 et retour en Base64
         byte[] plainBytes = Encoding.UTF8.GetBytes(plainText);

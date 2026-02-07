@@ -20,13 +20,17 @@ public class DecryptCommand(IFileSystem fileSystem, ICryptoProvider crypto)
         // 2. Reconstruction du secret partagé (commutatif : k_a * Q_b == k_b * Q_a)
         Point sharedSecretPoint = _curve.Multiply(senderQ, myK);
 
-        // 3. Dérivation identique au chiffrement : SHA256(S.x)
-        byte[] secretBytes = Encoding.UTF8.GetBytes(sharedSecretPoint.X.ToString());
+        // 3. Dérivation identique au chiffrement : SHA256("X;Y") puis hexdigest
+        string secretString = $"{sharedSecretPoint.X};{sharedSecretPoint.Y}";
+        byte[] secretBytes = Encoding.UTF8.GetBytes(secretString);
         byte[] hash = crypto.ComputeSha256(secretBytes);
 
-        // IV = 16 premiers octets, Clé AES = 16 derniers octets
-        byte[] iv = hash[..16];
-        byte[] key = hash[16..];
+        // Conversion en hexdigest
+        string hexDigest = Convert.ToHexStringLower(hash); // 64 caractères hex
+
+        // IV = 16 premiers caractères du hexdigest, Clé AES = 16 derniers caractères
+        byte[] iv = Encoding.ASCII.GetBytes(hexDigest[..16]);
+        byte[] key = Encoding.ASCII.GetBytes(hexDigest[^16..]);
 
         // 4. Déchiffrement AES-128/CBC/PKCS7
         byte[] cipherBytes = Convert.FromBase64String(cipherTextBase64);

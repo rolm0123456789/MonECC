@@ -1,5 +1,4 @@
-VERGUET Romain
-# MonECC - Implémentation de Cryptographie sur Courbes Elliptiques
+# VERGUET Romain MonECC - Implémentation de Cryptographie sur Courbes Elliptiques
 
 **MonECC** est une application console développée en .NET 10 (Native AOT) implémentant un cryptosystème hybride alliant la Cryptographie sur Courbes Elliptiques (ECC) pour l'échange de clés et AES-128 pour le chiffrement symétrique.
 
@@ -41,13 +40,13 @@ Le projet est structuré selon une architecture en couches strictes (Onion/Clean
 Le projet respecte les contraintes académiques suivantes :
 
 * **Courbe** : $y^2 = x^3 + 35x + 3 \pmod{101}$
-* **Point Générateur** : $P(2, 9)$
+* **Point Générateur** : $P(6, 5)$ (cycle de 28, meilleur choix sur $F_{101}$ — recommandé par le professeur)
 * **Addition (P+Q)** : Utilise la formule de la pente $\lambda = (y_q - y_p)(x_q - x_p)^{-1} \pmod p$
 * **Doublement (2P)** : Utilise la formule de la tangente $\lambda = (3x_p^2 + a)(2y_p)^{-1} \pmod p$
 * **Protocole Hybride** :
 1. Calcul du secret partagé  $S = k_{priv} \times Q_{pub}$
-2. Hachage de la coordonnée $X$ du secret via SHA256.
-3. Découpage du hash : 16 premiers octets pour l'IV, 16 suivants pour la clé AES.
+2. Hachage des deux coordonnées du secret $(X;Y)$ via SHA256.
+3. Conversion en hexdigest (64 caractères hex) : 16 premiers caractères pour l'IV, 16 derniers pour la clé AES.
 4. Chiffrement AES-128 en mode CBC avec padding PKCS7.
 
 ## Prérequis
